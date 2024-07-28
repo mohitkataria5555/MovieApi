@@ -7,7 +7,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -105,5 +108,49 @@ public class MovieServiceImpl implements MovieService {
         }
 
         return movieDtos;
+    }
+
+    @Override
+    public MovieDto updateMovie(Integer movieId, MovieDto movieDto, MultipartFile file) throws IOException {
+        // check if movie object exists with given movieId
+        Movie movie = movieRepository.findById(movieId).orElseThrow(() -> new RuntimeException("Movie not found"));
+        String fileName = movie.getPoster();
+        if(file != null){
+            Files.deleteIfExists(Paths.get(path + File.separator + fileName));
+            fileName = fileService.uploadFile(path,file);
+        }
+        movieDto.setPoster(fileName);
+
+        Movie movie1 = new Movie(
+                movie.getMovieId(),
+                movieDto.getTitle(),
+                movieDto.getDirector(),
+                movieDto.getStudio(),
+                movieDto.getMovieCast(),
+                movieDto.getReleaseYear(),
+                movieDto.getPoster()
+        );
+        Movie updatedMovie = movieRepository.save(movie1);
+        String posterUrl = baseurl + "/file/" + fileName;
+        MovieDto movieDto1 = new MovieDto(
+                movie1.getMovieId(),
+                movie1.getTitle(),
+                movie1.getDirector(),
+                movie1.getStudio(),
+                movie1.getMovieCast(),
+                movie1.getReleaseYear(),
+                movie1.getPoster(),
+                posterUrl
+        );
+        return movieDto1;
+    }
+
+    @Override
+    public String deleteMovie(Integer movieId) throws IOException {
+        Movie movie = movieRepository.findById(movieId).orElseThrow(() -> new RuntimeException("Movie not found"));
+        Integer id = movie.getMovieId();
+        Files.deleteIfExists(Paths.get(path + File.separator + movie.getPoster()));
+        movieRepository.delete(movie);
+        return "Movie deleted with id :" + id;
     }
 }
